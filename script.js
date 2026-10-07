@@ -5,7 +5,9 @@
    ========================================================== */
 (() => {
   'use strict';
-
+  const SUPABASE_URL = 'https://tswqqezlffhzdbzcsiaa.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzd3FxZXpsZmZoemRiemNzaWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNjM2OTAsImV4cCI6MjEwNjkzOTY5MH0.xz1cPCzMttBR-P4oIMcSLRctLuDCtcPCffDcMpsynvI';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -403,17 +405,32 @@
   });
   fNote.addEventListener('input', () => { $('#note-count').textContent = fNote.value.length; });
 
-  function startIrrigation({ zone, zoneLabel, minutes, note }) {
-    // TODO(data): gọi API/MQTT để gửi lệnh tưới thật, ví dụ:
-    // fetch('/api/irrigation', { method: 'POST', body: JSON.stringify({ zone, minutes, note }) })
-    document.dispatchEvent(new CustomEvent('irrigation:start', { detail: { zone, minutes, note } }));
+  async function startIrrigation({ zone, zoneLabel, minutes, note }) {
+    // 1. Gọi API lưu dữ liệu xuống Supabase
+    const { error } = await supabase
+      .from('irrigation_logs')
+      .insert([{ 
+        zone: zone, 
+        duration_minutes: minutes, 
+        note: note 
+      }]);
 
-    toast(`Đã gửi lệnh tưới · ${zoneLabel} · ${minutes} phút`);
+    if (error) {
+      toast('Lỗi kết nối DB: ' + error.message, 'error');
+      return;
+    }
+
+    // 2. Chạy hiệu ứng UI như cũ nếu lưu thành công
+    document.dispatchEvent(new CustomEvent('irrigation:start', { detail: { zone, minutes, note } }));
+    toast(`Đã gửi lệnh tưới xuống DB · ${zoneLabel} · ${minutes} phút`);
+    
     const label = $('span', irrigateBtn);
     irrigateBtn.disabled = true;
     let remaining = minutes * 60;
+    
     const render = () => { label.textContent = `Đang tưới ${pad2(Math.floor(remaining / 60))}:${pad2(remaining % 60)}`; };
     render();
+    
     irrigationTimer = setInterval(() => {
       remaining -= 1;
       if (remaining <= 0) {
@@ -448,6 +465,27 @@
     closeDialog();
   });
 
+  async function fetchRealKpis() {
+    const { data, error } = await supabase
+      .from('telemetry_logs')
+      .select('temperature, humidity, soil_moisture, light_lux, co2_ppm')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) return;
+
+    // Cập nhật lên UI (bỏ qua hàm sinh số ngẫu nhiên cũ)
+    setKpi('temp', data.temperature, 600);
+    setKpi('hum', data.humidity, 600);
+    setKpi('soil', data.soil_moisture, 600);
+    setKpi('light', data.light_lux, 600);
+    setKpi('co2', data.co2_ppm, 600);
+
+    setTimeout(syncSensors, 620);
+    $('#last-update').textContent = 'LAST ' + clockString(new Date());
+  }
+
   /* ==========================================================
      Boot
      ========================================================== */
@@ -465,8 +503,11 @@
     $('#last-update').textContent = 'LAST ' + clockString(new Date());
     drawChart();
 
-    // Auto refresh mỗi 5 giây (khớp badge "AUTO REFRESH · 5s")
-    setInterval(() => { if (!document.hidden) tickKpis(); }, 5000);
+    // Thay thế đoạn setInterval cũ:
+    fetchRealKpis(); // Lấy dữ liệu lần đầu
+    setInterval(() => {
+      if (!document.hidden) fetchRealKpis(); 
+    }, 5000); // Tự động kéo dữ liệu mỗi 5s
   }
 
   boot();
