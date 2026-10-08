@@ -5,8 +5,8 @@
    ========================================================== */
 (() => {
   'use strict';
-  const SUPABASE_URL = 'https://tswqqezlffhzdbzcsiaa.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzd3FxZXpsZmZoemRiemNzaWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNjM2OTAsImV4cCI6MjEwNjkzOTY5MH0.xz1cPCzMttBR-P4oIMcSLRctLuDCtcPCffDcMpsynvI';
+  const SUPABASE_URL = 'https://qdicuomcxiayoauricxo.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkaWN1b21jeGlheW9hdXJpY3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NTI3MDQsImV4cCI6MjEwNzAyODcwNH0.-zegaN7ftigClHdSJxsIOq4chTvtmlHhbiqFuTtAaKc';
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $ = (sel, root = document) => root.querySelector(sel);
